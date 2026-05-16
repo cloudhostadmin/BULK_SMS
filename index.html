@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bulk SMS Sender — DLT Template Manager</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0f1117; --bg2:#161b27; --bg3:#1e2433; --bg4:#252d40;
+      --border:#2a3348; --border2:#3a4560;
+      --text:#e8eaf0; --text2:#8b95b0; --text3:#5a6480;
+      --accent:#4f8ef7; --accent2:#3a72e0;
+      --green:#22c97a; --green2:#18a060;
+      --red:#f75a5a; --amber:#f7b84f;
+      --radius:10px; --radius-sm:6px;
+    }
+    body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:14px; line-height:1.6; }
+    .header { background:var(--bg2); border-bottom:1px solid var(--border); padding:0 2rem; display:flex; align-items:center; justify-content:space-between; height:58px; position:sticky; top:0; z-index:100; }
+    .header-brand { display:flex; align-items:center; gap:10px; font-size:16px; font-weight:600; }
+    .header-brand .icon { width:34px; height:34px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; }
+    .header-badge { background:var(--bg4); border:1px solid var(--border2); border-radius:20px; padding:3px 12px; font-size:12px; color:var(--text2); }
+    .layout { display:grid; grid-template-columns:235px 1fr; min-height:calc(100vh - 58px); }
+    .sidebar { background:var(--bg2); border-right:1px solid var(--border); padding:1.5rem 0; position:sticky; top:58px; height:calc(100vh - 58px); overflow-y:auto; }
+    .sidebar-section { padding:0 1rem; margin-bottom:1.5rem; }
+    .sidebar-label { font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; padding:0 .5rem; margin-bottom:6px; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:var(--radius-sm); cursor:pointer; color:var(--text2); font-size:14px; font-weight:500; border:none; background:none; width:100%; text-align:left; transition:background .15s,color .15s; }
+    .nav-item:hover { background:var(--bg3); color:var(--text); }
+    .nav-item.active { background:rgba(79,142,247,.15); color:var(--accent); }
+    .nav-item i { width:18px; text-align:center; font-size:15px; }
+    .nav-badge { margin-left:auto; background:var(--accent); color:white; border-radius:10px; padding:1px 7px; font-size:11px; font-weight:600; }
+    .main { padding:2rem; overflow-y:auto; }
+    .page { display:none; } .page.active { display:block; }
+    .page-title { font-size:20px; font-weight:600; margin-bottom:1.5rem; }
+    .page-title span { font-size:14px; font-weight:400; color:var(--text2); margin-left:8px; }
+    .card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem 1.5rem; margin-bottom:1.25rem; }
+    .card-title { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--text3); margin-bottom:1rem; }
+    .field { margin-bottom:1rem; } .field:last-child { margin-bottom:0; }
+    label { display:block; font-size:13px; font-weight:500; color:var(--text2); margin-bottom:5px; }
+    input,textarea,select { width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-family:inherit; font-size:14px; padding:9px 12px; outline:none; transition:border-color .15s; }
+    input:focus,textarea:focus,select:focus { border-color:var(--accent); background:var(--bg4); }
+    textarea { resize:vertical; min-height:130px; line-height:1.7; }
+    select option { background:var(--bg3); }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+    .btn { display:inline-flex; align-items:center; gap:7px; padding:9px 16px; border-radius:var(--radius-sm); font-size:14px; font-weight:500; cursor:pointer; border:1px solid var(--border2); background:var(--bg3); color:var(--text); transition:background .15s,opacity .15s; white-space:nowrap; }
+    .btn:hover { background:var(--bg4); }
+    .btn:active { opacity:.8; }
+    .btn:disabled { opacity:.4; cursor:not-allowed; }
+    .btn-primary { background:var(--accent); border-color:var(--accent); color:white; }
+    .btn-primary:hover { background:var(--accent2); }
+    .btn-green { background:rgba(34,201,122,.15); border-color:var(--green2); color:var(--green); }
+    .btn-green:hover { background:rgba(34,201,122,.25); }
+    .btn-red { background:rgba(247,90,90,.12); border-color:#b84040; color:var(--red); }
+    .btn-red:hover { background:rgba(247,90,90,.22); }
+    .btn-sm { padding:5px 10px; font-size:12px; }
+    .btn-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:1rem; }
+    .chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+    .chip-blue { background:rgba(79,142,247,.15); color:var(--accent); border:1px solid rgba(79,142,247,.3); }
+    .chip-green { background:rgba(34,201,122,.12); color:var(--green); border:1px solid rgba(34,201,122,.3); }
+    .chip-amber { background:rgba(247,184,79,.12); color:var(--amber); border:1px solid rgba(247,184,79,.3); }
+    .chip-red { background:rgba(247,90,90,.12); color:var(--red); border:1px solid rgba(247,90,90,.3); }
+    .chip-gray { background:var(--bg3); color:var(--text2); border:1px solid var(--border); }
+    .table-wrap { overflow-x:auto; border-radius:var(--radius-sm); border:1px solid var(--border); }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { background:var(--bg3); padding:9px 12px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--text3); border-bottom:1px solid var(--border); white-space:nowrap; }
+    td { padding:7px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:rgba(255,255,255,.02); }
+    td input { background:transparent; border:1px solid transparent; padding:4px 6px; font-size:13px; border-radius:4px; min-width:100px; }
+    td input:focus { background:var(--bg4); border-color:var(--accent); }
+    .analysis-box { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius-sm); padding:1rem; min-height:64px; }
+    .preview-msg { background:var(--bg3); border:1px solid var(--border2); border-left:3px solid var(--accent); border-radius:var(--radius-sm); padding:14px 16px; font-size:14px; line-height:1.8; white-space:pre-wrap; word-break:break-word; }
+    .url-display { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 14px; font-size:11px; font-family:'Courier New',monospace; word-break:break-all; color:var(--text2); line-height:1.7; max-height:150px; overflow-y:auto; }
+    .log-box { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; font-family:'Courier New',monospace; font-size:12px; max-height:280px; overflow-y:auto; line-height:1.8; }
+    .log-ok{color:var(--green);} .log-err{color:var(--red);} .log-info{color:var(--text3);} .log-short{color:#a78bfa;}
+    .progress-bar { height:6px; background:var(--bg4); border-radius:3px; overflow:hidden; margin:10px 0; }
+    .progress-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--green)); border-radius:3px; transition:width .3s; }
+    .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.25rem; }
+    .stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:1rem 1.25rem; }
+    .stat-label { font-size:12px; color:var(--text3); font-weight:500; margin-bottom:4px; }
+    .stat-value { font-size:26px; font-weight:700; }
+    .stat-value.blue{color:var(--accent);} .stat-value.green{color:var(--green);} .stat-value.red{color:var(--red);} .stat-value.amber{color:var(--amber);}
+    .empty-state { text-align:center; padding:3rem 2rem; color:var(--text3); }
+    .empty-state i { font-size:42px; display:block; margin-bottom:14px; }
+    .empty-state strong { color:var(--text2); font-size:16px; }
+    .alert { padding:11px 14px; border-radius:var(--radius-sm); font-size:13px; margin-bottom:1rem; display:flex; align-items:flex-start; gap:10px; line-height:1.6; }
+    .alert i { margin-top:2px; flex-shrink:0; }
+    .alert-warn { background:rgba(247,184,79,.1); border:1px solid rgba(247,184,79,.3); color:var(--amber); }
+    .alert-info { background:rgba(79,142,247,.1); border:1px solid rgba(79,142,247,.3); color:var(--accent); }
+    .alert-green { background:rgba(34,201,122,.1); border:1px solid rgba(34,201,122,.3); color:var(--green); }
+    ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+    @media(max-width:860px){
+      .layout{grid-template-columns:1fr;}
+      .sidebar{position:relative;height:auto;border-right:none;border-bottom:1px solid var(--border);padding:.75rem 1rem;display:flex;flex-wrap:wrap;}
+      .sidebar-section{margin-bottom:0;display:flex;gap:4px;flex-wrap:wrap;}
+      .sidebar-label{display:none;}
+      .nav-item{width:auto;padding:6px 12px;}
+      .stats-grid{grid-template-columns:repeat(2,1fr);}
+      .grid-2,.grid-3{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="icon"><i class="fa-solid fa-paper-plane" style="color:white;font-size:16px"></i></div>
+    Bulk SMS Sender
+  </div>
+  <div class="header-badge"><i class="fa-solid fa-compress" style="margin-right:5px"></i>Smart URL Compressor + DLT Manager</div>
+</header>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Configure</div>
+      <button class="nav-item active" onclick="showPage('setup')"><i class="fa-solid fa-sliders"></i> Setup &amp; Template</button>
+      <button class="nav-item" onclick="showPage('urlbuilder')"><i class="fa-solid fa-compress"></i> URL Compressor</button>
+      <button class="nav-item" onclick="showPage('data')"><i class="fa-solid fa-table"></i> Contact Data <span class="nav-badge" id="nb-data">0</span></button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Operate</div>
+      <button class="nav-item" onclick="showPage('preview')"><i class="fa-solid fa-eye"></i> Preview</button>
+      <button class="nav-item" onclick="showPage('send')"><i class="fa-solid fa-rocket"></i> Send</button>
+      <button class="nav-item" onclick="showPage('logs')"><i class="fa-solid fa-list-check"></i> Logs <span class="nav-badge" id="nb-logs" style="display:none;background:var(--green)">0</span></button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ===== SETUP ===== -->
+    <div id="page-setup" class="page active">
+      <div class="page-title">Setup &amp; Template <span>Configure API and DLT message</span></div>
+
+      <div class="alert alert-green">
+        <i class="fa-solid fa-circle-check"></i>
+        <div>
+          <strong>Clean Fix — No PHP, No Shortener Service:</strong>
+          Your base URL <code>https://cloudhostadmin.github.io/KALYAN_CENTURY_2026/</code> is already DLT-whitelisted.
+          The tool compresses all the long query parameters into a single short token like <code>?d=eJyrVk...</code>
+          which stays under the DLT character limit. No external services, no redirects, no ads.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-key"></i> SMS API Credentials</div>
+        <div class="grid-2">
+          <div class="field"><label>Auth Key</label><input id="authkey" type="password" value="362887AlZ88lB6bZc60ce2524P1"></div>
+          <div class="field"><label>API Base URL</label><input id="apibase" value="http://sms.ssdweb.in/api/sendhttp.php"></div>
+        </div>
+        <div class="grid-3">
+          <div class="field"><label>Sender ID</label><input id="sender" value="GPRESS"></div>
+          <div class="field"><label>Route</label>
+            <select id="route">
+              <option value="4" selected>4 — Transactional</option>
+              <option value="1">1 — Promotional</option>
+              <option value="2">2 — OTP</option>
+            </select>
+          </div>
+          <div class="field"><label>Encoding</label>
+            <select id="unicode">
+              <option value="1" selected>1 — Unicode (Hindi/Regional)</option>
+              <option value="0">0 — English (ASCII)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-file-lines"></i> DLT Template</div>
+        <div class="grid-2">
+          <div class="field"><label>DLT Template ID</label><input id="dlt_id" value="1207177694755457654"></div>
+          <div class="field"><label>Sender Header</label><input id="header_name" value="GPRESS"></div>
+        </div>
+        <div class="field">
+          <label>Template Message — use <code style="background:var(--bg4);padding:1px 7px;border-radius:4px;color:var(--accent);font-size:12px">{#var#}</code> for variables</label>
+          <textarea id="template" oninput="analyzeTemplate()">'कल्याण' शताब्दी अंक का विमोचन पूज्य संत-महात्माओं एवं श्री अमित शाह जी द्वारा एक भव्य समारोह में किया गया। समारोह का वीडियो देखने के लिए यह लिंक देखें{#var#} आप कल्याण के सम्मानित पाठक रहे हैं। किसी कारणवश आपकी सदस्यता रुक गई है, नीचे दिए गए लिंक से तत्काल नवीनीकृत करें। सदस्यता लेने पर शताब्दी विशेषांक सहित 11 मासिक अंक आपको समयबद्ध डाक सेवा एवं ट्रैकिंग सुविधा सहित भेजे जाएंगे। वार्षिक शुल्क मात्र ₹500 है। Renewal Link -{#var#} किसी भी जानकारी या सहायता के लिए संपर्क करें — kalyan@gitapress.org +91-9235400242 सादर, गीताप्रेस, गोरखपुर</textarea>
+        </div>
+        <label style="margin-bottom:6px">Template Analysis</label>
+        <div class="analysis-box" id="analysis"><span style="color:var(--text3)">Enter template above...</span></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="generateExcel()"><i class="fa-solid fa-file-excel"></i> Generate Excel Template</button>
+          <button class="btn btn-green" onclick="document.getElementById('upload-xlsx').click()"><i class="fa-solid fa-upload"></i> Upload Filled Excel / CSV</button>
+          <input type="file" id="upload-xlsx" accept=".xlsx,.xls,.csv" style="display:none" onchange="loadExcel(this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== URL COMPRESSOR ===== -->
+    <div id="page-urlbuilder" class="page">
+      <div class="page-title">URL Compressor <span>Compress long query parameters into a short token — DLT-safe</span></div>
+
+      <div class="alert alert-green">
+        <i class="fa-solid fa-circle-check"></i>
+        <div>
+          <strong>How it works:</strong> The base URL <code>https://cloudhostadmin.github.io/KALYAN_CENTURY_2026/</code>
+          stays as-is (already DLT-whitelisted). All the long customer parameters get Base64-compressed into a single
+          short <code>?d=...</code> token. The page on GitHub reads this token and unpacks the data.<br><br>
+          <strong>Result:</strong> <code>https://cloudhostadmin.github.io/KALYAN_CENTURY_2026/?d=eJyrVkqtKU...</code>
+          — typically <strong>60–80 chars total</strong>, well within DLT limits.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-gears"></i> Compression Settings</div>
+
+        <div class="field">
+          <label>Base URL (DLT-whitelisted, stays unchanged in SMS)</label>
+          <input id="base-url" value="https://cloudhostadmin.github.io/KALYAN_CENTURY_2026/" placeholder="https://yourdomain.com/page/">
+        </div>
+
+        <div class="field">
+          <label>Which column contains the long query-parameter URL to compress?</label>
+          <div id="compress-col-wrap" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+            <span style="color:var(--text3);font-size:13px">Load your Excel data first (Setup tab).</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label style="margin-bottom:8px">Preview compressed URL for row:</label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="number" id="compress-preview-row" value="1" min="1" style="width:90px" oninput="updateCompressPreview()">
+            <span style="font-size:13px;color:var(--text2)" id="compress-preview-count"></span>
+          </div>
+        </div>
+
+        <div id="compress-preview-box" style="margin-top:10px;display:none">
+          <div style="margin-bottom:8px">
+            <label style="margin-bottom:4px;font-size:12px">Original URL length:</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="chip chip-red" id="orig-len-chip">0 chars</span>
+              <span style="color:var(--text3);font-size:13px">→</span>
+              <span class="chip chip-green" id="comp-len-chip">0 chars</span>
+              <span class="chip chip-blue" id="saved-chip">saved 0 chars</span>
+            </div>
+          </div>
+          <label style="margin-bottom:4px;font-size:12px">Compressed URL (this goes into SMS):</label>
+          <div id="compressed-url-display" class="url-display">—</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-compress-all" onclick="compressAll()">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Compress All Rows Now
+          </button>
+          <button class="btn btn-red" onclick="stopCompress()" id="btn-compress-stop" style="display:none">
+            <i class="fa-solid fa-stop"></i> Stop
+          </button>
+          <button class="btn" onclick="exportCurrentData()">
+            <i class="fa-solid fa-download"></i> Export Compressed Data
+          </button>
+        </div>
+      </div>
+
+      <div class="card" id="compress-progress-card" style="display:none">
+        <div class="card-title"><i class="fa-solid fa-bars-progress"></i> Compression Progress</div>
+        <div class="progress-bar"><div class="progress-fill" id="compress-progress-fill" style="width:0%"></div></div>
+        <div id="compress-progress-text" style="font-size:12px;color:var(--text3);margin-bottom:10px"></div>
+        <div class="log-box" id="compress-log"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-code"></i> GitHub Page Decoder Script</div>
+        <div class="alert alert-info" style="margin-bottom:12px">
+          <i class="fa-solid fa-circle-info"></i>
+          <div>Add this script to your <code>index.html</code> on GitHub (<code>cloudhostadmin.github.io/KALYAN_CENTURY_2026/</code>).
+          It automatically reads the <code>?d=</code> token and expands it back into all customer parameters.</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-family:'Courier New',monospace;font-size:12px;color:var(--text2);line-height:1.8;max-height:320px;overflow-y:auto;white-space:pre" id="decoder-script-display"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="copyDecoderScript()"><i class="fa-solid fa-copy"></i> Copy Script</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== DATA ===== -->
+    <div id="page-data" class="page">
+      <div class="page-title">Contact Data <span id="data-subtitle"></span></div>
+      <div id="data-empty" class="empty-state">
+        <i class="fa-solid fa-table"></i><strong>No data loaded</strong>
+        <p style="margin-top:8px">Setup → Generate Excel → fill → Upload back</p>
+        <div class="btn-row" style="justify-content:center;margin-top:1.5rem">
+          <button class="btn btn-primary" onclick="showPage('setup')"><i class="fa-solid fa-arrow-left"></i> Go to Setup</button>
+        </div>
+      </div>
+      <div id="data-loaded" style="display:none">
+        <div class="btn-row" style="margin-bottom:1rem">
+          <button class="btn btn-green" onclick="addRow()"><i class="fa-solid fa-plus"></i> Add Row</button>
+          <button class="btn" onclick="document.getElementById('upload-xlsx').click()"><i class="fa-solid fa-upload"></i> Re-upload</button>
+          <button class="btn btn-red" onclick="clearData()"><i class="fa-solid fa-trash"></i> Clear All</button>
+          <button class="btn" onclick="exportCurrentData()"><i class="fa-solid fa-download"></i> Export</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead id="data-thead"></thead><tbody id="data-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PREVIEW ===== -->
+    <div id="page-preview" class="page">
+      <div class="page-title">Preview <span>Inspect exact message per row</span></div>
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-eye"></i> Message Preview</div>
+        <div style="display:flex;align-items:flex-end;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
+          <div class="field" style="margin-bottom:0"><label>Row #</label><input type="number" id="preview-row" value="1" min="1" oninput="updatePreview()" style="width:110px"></div>
+          <span id="preview-nav" style="font-size:13px;color:var(--text2);padding-bottom:2px"></span>
+        </div>
+        <label style="margin-bottom:6px">Composed Message</label>
+        <div id="preview-msg" class="preview-msg">—</div>
+        <div style="margin-top:1rem"><label style="margin-bottom:6px">Variable Values</label><div id="preview-vars" style="font-size:13px;">—</div></div>
+        <div style="margin-top:1rem">
+          <label style="margin-bottom:6px">Full API URL</label>
+          <div id="preview-url" class="url-display">—</div>
+          <div class="btn-row">
+            <button class="btn btn-sm" onclick="copyURL()"><i class="fa-solid fa-copy"></i> Copy URL</button>
+            <button class="btn btn-sm btn-primary" onclick="testSingleSend()"><i class="fa-solid fa-paper-plane"></i> Test Send This Row</button>
+          </div>
+        </div>
+        <div style="margin-top:1rem"><label style="margin-bottom:6px">Stats</label><div id="msg-stats">—</div></div>
+      </div>
+    </div>
+
+    <!-- ===== SEND ===== -->
+    <div id="page-send" class="page">
+      <div class="page-title">Send <span>Bulk dispatch</span></div>
+      <div id="shorten-warning" class="alert alert-warn" style="display:none">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div>Some variable columns have long URLs (&gt;60 chars). Go to <strong>URL Compressor</strong> tab first.</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value blue" id="stat-total">0</div></div>
+        <div class="stat-card"><div class="stat-label">Sent</div><div class="stat-value green" id="stat-sent">0</div></div>
+        <div class="stat-card"><div class="stat-label">Failed</div><div class="stat-value red" id="stat-failed">0</div></div>
+        <div class="stat-card"><div class="stat-label">Remaining</div><div class="stat-value amber" id="stat-remaining">0</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-gears"></i> Send Options</div>
+        <div class="grid-3">
+          <div class="field"><label>Delay Between Messages (ms)</label><input type="number" id="delay-ms" value="500" min="100" max="10000" step="100"></div>
+          <div class="field"><label>Start From Row</label><input type="number" id="start-row" value="1" min="1"></div>
+          <div class="field"><label>End At Row (0 = all)</label><input type="number" id="end-row" value="0" min="0"></div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+        <div id="progress-text" style="font-size:12px;color:var(--text3);margin-bottom:12px">Ready</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="startSend()" id="btn-send"><i class="fa-solid fa-rocket"></i> Start Sending</button>
+          <button class="btn btn-red" onclick="stopSend()" id="btn-stop" style="display:none"><i class="fa-solid fa-stop"></i> Stop</button>
+          <button class="btn" onclick="pauseSend()" id="btn-pause" style="display:none"><i class="fa-solid fa-pause"></i> Pause</button>
+          <button class="btn btn-green" onclick="exportLog()"><i class="fa-solid fa-download"></i> Export Log</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-terminal"></i> Live Log</div>
+        <div class="log-box" id="send-log"><span class="log-info">— Waiting to start —</span></div>
+      </div>
+    </div>
+
+    <!-- ===== LOGS ===== -->
+    <div id="page-logs" class="page">
+      <div class="page-title">Send History</div>
+      <div id="log-empty" class="empty-state">
+        <i class="fa-solid fa-list-check"></i><strong>No sends yet</strong>
+      </div>
+      <div id="log-loaded" style="display:none">
+        <div class="btn-row" style="margin-bottom:1rem">
+          <button class="btn btn-green" onclick="exportLog()"><i class="fa-solid fa-download"></i> Export as Excel</button>
+          <button class="btn btn-red" onclick="clearLog()"><i class="fa-solid fa-trash"></i> Clear</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Time</th><th>Mobile</th><th>Status</th><th>Info</th><th>Message Preview</th></tr></thead>
+            <tbody id="log-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ============================================================
+//  STATE
+// ============================================================
+let vars = [], tableHeaders = [], tableData = [];
+let sendLog = [];
+let sendingActive = false, sendingPaused = false, compressingActive = false;
+let statSent = 0, statFailed = 0;
+let compressColIndex = -1; // which column index to compress
+
+// ============================================================
+//  NAVIGATION
+// ============================================================
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  document.querySelector(`.nav-item[onclick="showPage('${p}')"]`).classList.add('active');
+  if (p === 'preview')    updatePreview();
+  if (p === 'send')       { updateSendStats(); checkLongWarning(); }
+  if (p === 'data')       refreshDataPage();
+  if (p === 'logs')       refreshLogPage();
+  if (p === 'urlbuilder') refreshCompressorPage();
+}
+
+// ============================================================
+//  URL COMPRESSION — Base64 encode the query string only
+// ============================================================
+
+/**
+ * Takes a full URL like:
+ *   https://cloudhostadmin.github.io/KALYAN_CENTURY_2026/?customerId=Test&firstName=NEEL...
+ * Extracts just the query params, Base64-encodes them, returns:
+ *   https://cloudhostadmin.github.io/KALYAN_CENTURY_2026/?d=Y3VzdG9tZXJJZD1UZXN0...
+ */
+function compressURL(fullUrl, baseUrl) {
+  baseUrl = (baseUrl || document.getElementById('base-url').value).trim().replace(/\/$/, '');
+
+  let queryString = '';
+
+  // If the URL contains the base URL, extract query string from it
+  if (fullUrl.includes('?')) {
+    queryString = fullUrl.substring(fullUrl.indexOf('?') + 1);
+  } else {
+    // It's just params without a base URL — encode as-is
+    queryString = fullUrl;
+  }
+
+  if (!queryString) return baseUrl + '/';
+
+  // Base64 encode the query string
+  const encoded = btoa(unescape(encodeURIComponent(queryString)));
+
+  // Use URL-safe Base64 (replace + with - and / with _)
+  const urlSafe = encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+  return baseUrl + '/?d=' + urlSafe;
+}
+
+function decompressToken(token) {
+  // Restore standard Base64
+  let b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+  // Add padding
+  while (b64.length % 4) b64 += '=';
+  try {
+    return decodeURIComponent(escape(atob(b64)));
+  } catch(e) {
+    return null;
+  }
+}
+
+// ============================================================
+//  COMPRESSOR PAGE
+// ============================================================
+function refreshCompressorPage() {
+  const wrap = document.getElementById('compress-col-wrap');
+  if (!tableHeaders.length) {
+    wrap.innerHTML = '<span style="color:var(--text3);font-size:13px">Load your Excel data first.</span>';
+    return;
+  }
+
+  // Show radio buttons for each variable column (col index 1+)
+  wrap.innerHTML = tableHeaders.slice(1).map((h, i) => `
+    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--text2);
+      background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 14px">
+      <input type="radio" name="compress-col" value="${i+1}" ${i === 0 ? 'checked' : ''}
+        style="width:auto;accent-color:var(--accent)" onchange="compressColIndex=${i+1};updateCompressPreview()">
+      <i class="fa-solid fa-compress" style="font-size:11px;color:var(--accent)"></i> ${esc(h)}
+    </label>`).join('');
+
+  if (compressColIndex === -1 && tableHeaders.length > 1) compressColIndex = 1;
+  updateCompressPreview();
+  renderDecoderScript();
+}
+
+function updateCompressPreview() {
+  if (compressColIndex === -1 || !tableData.length) return;
+  const ri = (parseInt(document.getElementById('compress-preview-row').value) || 1) - 1;
+  const row = tableData[Math.min(ri, tableData.length - 1)];
+  document.getElementById('compress-preview-count').textContent = `of ${tableData.length}`;
+
+  const original = row[compressColIndex] || '';
+  if (!original) {
+    document.getElementById('compress-preview-box').style.display = 'none';
+    return;
+  }
+
+  const compressed = compressURL(original);
+  document.getElementById('compress-preview-box').style.display = 'block';
+  document.getElementById('orig-len-chip').textContent = original.length + ' chars';
+  document.getElementById('comp-len-chip').textContent = compressed.length + ' chars';
+  document.getElementById('saved-chip').textContent = 'saved ' + (original.length - compressed.length) + ' chars';
+  document.getElementById('compressed-url-display').textContent = compressed;
+}
+
+async function compressAll() {
+  if (!tableData.length) { alert('Load data first.'); return; }
+  if (compressColIndex === -1) { alert('Select a column to compress.'); return; }
+
+  compressingActive = true;
+  document.getElementById('btn-compress-all').disabled = true;
+  document.getElementById('btn-compress-stop').style.display = 'inline-flex';
+  document.getElementById('compress-progress-card').style.display = 'block';
+  document.getElementById('compress-log').innerHTML = '';
+
+  let done = 0, compressed = 0, skipped = 0;
+  const total = tableData.length;
+  const colName = tableHeaders[compressColIndex];
+
+  cLog('info', `Compressing column "${colName}" for ${total} rows...`);
+
+  for (let ri = 0; ri < total; ri++) {
+    if (!compressingActive) break;
+    const orig = tableData[ri][compressColIndex] || '';
+
+    if (!orig) {
+      skipped++;
+    } else {
+      const compressed_url = compressURL(orig);
+      tableData[ri][compressColIndex] = compressed_url;
+      cLog('short', `Row ${ri+1}: ${orig.length} → ${compressed_url.length} chars  ✓`);
+      compressed++;
+    }
+
+    done++;
+    const pct = Math.round(done / total * 100);
+    document.getElementById('compress-progress-fill').style.width = pct + '%';
+    document.getElementById('compress-progress-text').textContent = `${done} / ${total}  (${pct}%)`;
+
+    // No delay needed — this is all local computation, instant
+    if (ri % 50 === 49) await sleep(10); // yield to browser every 50 rows
+  }
+
+  compressingActive = false;
+  document.getElementById('btn-compress-all').disabled = false;
+  document.getElementById('btn-compress-stop').style.display = 'none';
+  cLog('info', `━━ Done ━━  Compressed: ${compressed}  Skipped (empty): ${skipped}`);
+  refreshDataPage();
+}
+
+function stopCompress() { compressingActive = false; }
+
+function cLog(type, msg) {
+  const el = document.getElementById('compress-log'); if (!el) return;
+  const d = document.createElement('div');
+  d.className = type === 'err' ? 'log-err' : type === 'short' ? 'log-short' : 'log-info';
+  d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  el.appendChild(d); el.scrollTop = el.scrollHeight;
+}
+
+// ============================================================
+//  DECODER SCRIPT FOR GITHUB PAGE
+// ============================================================
+const DECODER_SCRIPT = `<!-- Add this inside <script> in your index.html on GitHub -->
+(function() {
+  // Read the compressed ?d= token from the URL
+  var params = new URLSearchParams(window.location.search);
+  var token = params.get('d');
+  if (!token) return; // No token — normal page load
+
+  // Restore Base64 padding and decode
+  var b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+
+  var queryString;
+  try {
+    queryString = decodeURIComponent(escape(atob(b64)));
+  } catch(e) {
+    console.error('SMS token decode failed:', e);
+    return;
+  }
+
+  // Parse the recovered query parameters
+  var customerParams = new URLSearchParams(queryString);
+
+  // ── USE YOUR PARAMETERS HERE ──────────────────────────────
+  // Example: populate variables on your page
+  var data = {};
+  customerParams.forEach(function(value, key) {
+    data[key] = value;
+  });
+
+  // Common fields:
+  var customerId   = data.customerId   || '';
+  var firstName    = data.firstName    || '';
+  var lastName     = data.lastName     || '';
+  var address1     = data.address1     || '';
+  var address2     = data.address2     || '';
+  var address3     = data.address3     || '';
+  var pincode      = data.pincode      || '';
+  var city         = data.city         || '';
+  var state        = data.state        || '';
+  var mobileNumber = data.mobilenumber || '';
+  var paymentLink  = data.paymentLink  || '';
+
+  // Example: fill elements on your page
+  // document.getElementById('customer-name').textContent = firstName + ' ' + lastName;
+  // document.getElementById('payment-btn').href = paymentLink;
+  // etc.
+
+  console.log('Customer data loaded:', data);
+})();`;
+
+function renderDecoderScript() {
+  document.getElementById('decoder-script-display').textContent = DECODER_SCRIPT;
+}
+
+function copyDecoderScript() {
+  navigator.clipboard.writeText(DECODER_SCRIPT)
+    .then(() => alert('Decoder script copied! Paste it into your GitHub index.html'))
+    .catch(() => alert('Copy failed — select text manually.'));
+}
+
+// ============================================================
+//  TEMPLATE ANALYSIS
+// ============================================================
+function analyzeTemplate() {
+  const tpl = document.getElementById('template').value;
+  const matches = [...tpl.matchAll(/\{#var#\}/g)];
+  vars = matches.map((_, i) => `var_${i + 1}`);
+  const el = document.getElementById('analysis');
+  if (!matches.length) {
+    el.innerHTML = '<span style="color:var(--text3)">No variables found.</span>';
+    return;
+  }
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <span class="chip chip-blue"><i class="fa-solid fa-brackets-curly"></i> ${matches.length} variable${matches.length > 1 ? 's' : ''} detected</span>
+      ${vars.map((v,i) => `<span class="chip chip-amber">{#var#} #${i+1} → <strong>${v}</strong></span>`).join('')}
+    </div>
+    <div style="font-size:13px;color:var(--text2)">
+      Excel columns: <strong style="color:var(--text)">mobile</strong>
+      ${vars.map(v => `, <strong style="color:var(--accent)">${v}</strong>`).join('')}
+    </div>`;
+}
+
+// ============================================================
+//  GENERATE EXCEL
+// ============================================================
+function generateExcel() {
+  analyzeTemplate();
+  const cols = ['mobile', ...vars];
+  const example = ['918005205980',
+    ...vars.map((_, i) => i === 0
+      ? 'https://www.youtube.com/playlist?list=PLves0RWv3fnixJ1TYfex5OzRNrQ1tfdAi'
+      : 'https://cloudhostadmin.github.io/KALYAN_CENTURY_2026/?customerId=Test&firstName=NEEL+RATAN&lastName=CHANDGOTHIA&address1=Haryana&pincode=122022&city=Gurgaon&state=Haryana&mobilenumber=9810048596&paymentLink=https://p.ppsl.io/PYTMPS/wf5nfk')
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([cols, example]);
+  ws['!cols'] = cols.map((_, i) => ({ wch: i === 0 ? 18 : 80 }));
+  XLSX.utils.book_append_sheet(wb, ws, 'SMS_Data');
+  XLSX.writeFile(wb, `sms_template_${Date.now()}.xlsx`);
+}
+
+// ============================================================
+//  LOAD EXCEL / CSV
+// ============================================================
+function loadExcel(input) {
+  const f = input.files[0]; if (!f) return;
+  const ext = f.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+  reader.onload = e => {
+    let data;
+    try {
+      const wb = ext === 'csv'
+        ? XLSX.read(e.target.result, { type: 'string' })
+        : XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+    } catch (err) { alert('Error: ' + err.message); return; }
+    if (!data.length) { alert('File is empty.'); return; }
+    tableHeaders = Object.keys(data[0]);
+    tableData = data.map(r => tableHeaders.map(h => String(r[h] || '')));
+    compressColIndex = tableHeaders.length > 1 ? 1 : -1;
+    updateNavBadge('nb-data', tableData.length);
+    refreshDataPage(); showPage('data'); analyzeTemplate();
+  };
+  if (ext === 'csv') reader.readAsText(f); else reader.readAsArrayBuffer(f);
+  input.value = '';
+}
+
+// ============================================================
+//  DATA TABLE
+// ============================================================
+function refreshDataPage() {
+  const empty = !tableData.length;
+  document.getElementById('data-empty').style.display = empty ? 'block' : 'none';
+  document.getElementById('data-loaded').style.display = empty ? 'none' : 'block';
+  if (empty) return;
+  document.getElementById('data-subtitle').textContent = `${tableData.length} contact${tableData.length !== 1 ? 's' : ''} loaded`;
+  document.getElementById('data-thead').innerHTML =
+    '<tr><th>#</th>' + tableHeaders.map(h => `<th>${esc(h)}</th>`).join('') + '<th>Del</th></tr>';
+  document.getElementById('data-tbody').innerHTML = tableData.map((row, ri) =>
+    `<tr><td style="color:var(--text3)">${ri+1}</td>` +
+    row.map((v, ci) => `<td><input value="${esc(v)}" oninput="tableData[${ri}][${ci}]=this.value"></td>`).join('') +
+    `<td><button class="btn btn-sm btn-red" onclick="removeRow(${ri})"><i class="fa-solid fa-xmark"></i></button></td></tr>`
+  ).join('');
+  updateNavBadge('nb-data', tableData.length);
+}
+
+function addRow() {
+  if (!tableHeaders.length) { analyzeTemplate(); tableHeaders = ['mobile', ...vars]; }
+  tableData.push(tableHeaders.map(_ => ''));
+  refreshDataPage();
+}
+function removeRow(i) { tableData.splice(i, 1); refreshDataPage(); }
+function clearData() {
+  if (!confirm('Clear all data?')) return;
+  tableData = []; tableHeaders = [];
+  refreshDataPage(); updateNavBadge('nb-data', 0);
+}
+function exportCurrentData() {
+  if (!tableData.length) { alert('No data.'); return; }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([tableHeaders, ...tableData]);
+  ws['!cols'] = tableHeaders.map(_ => ({ wch: 40 }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Data');
+  XLSX.writeFile(wb, `sms_data_${Date.now()}.xlsx`);
+}
+
+// ============================================================
+//  BUILD MESSAGE & URL
+// ============================================================
+function buildMessage(row) {
+  let msg = document.getElementById('template').value, vi = 0;
+  return msg.replace(/\{#var#\}/g, () => {
+    const c = 1 + vi++;
+    return (row[c] !== undefined && row[c] !== '') ? row[c] : '{#var#}';
+  });
+}
+function buildURL(mobile, msg) {
+  const base = document.getElementById('apibase').value.trim();
+  const p = {
+    authkey:   document.getElementById('authkey').value,
+    mobiles:   mobile,
+    message:   msg,
+    sender:    document.getElementById('sender').value,
+    route:     document.getElementById('route').value,
+    unicode:   document.getElementById('unicode').value,
+    DLT_TE_ID: document.getElementById('dlt_id').value
+  };
+  return base + '?' + Object.entries(p).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+}
+
+// ============================================================
+//  PREVIEW
+// ============================================================
+function updatePreview() {
+  const ri = (parseInt(document.getElementById('preview-row').value) || 1) - 1;
+  const row = tableData[ri];
+  document.getElementById('preview-nav').textContent = tableData.length ? `Showing ${ri+1} of ${tableData.length}` : 'No data';
+  if (!row) {
+    ['preview-msg','preview-url','msg-stats'].forEach(id => document.getElementById(id).textContent = '—');
+    document.getElementById('preview-vars').innerHTML = '—';
+    return;
+  }
+  const msg = buildMessage(row);
+  document.getElementById('preview-msg').textContent = msg;
+  document.getElementById('preview-url').textContent = buildURL(row[0], msg);
+  const varCols = tableHeaders.slice(1);
+  document.getElementById('preview-vars').innerHTML = varCols.length
+    ? varCols.map((h,i) => {
+        const v = row[i+1]||'—';
+        const long = v.startsWith('http') && v.length > 60;
+        return `<span class="chip ${long?'chip-red':'chip-green'}" style="margin:2px;font-size:11px">
+          ${esc(h)}: ${esc(v.slice(0,55))}${v.length>55?'…':''}
+          ${long?' ⚠ NOT YET COMPRESSED':''}
+        </span>`;
+      }).join('')
+    : '<span style="color:var(--text3)">No variables</span>';
+  const cc = msg.length, sc = cc <= 160 ? 1 : Math.ceil(cc/153);
+  document.getElementById('msg-stats').innerHTML =
+    `<span class="chip chip-blue">${cc} chars</span>
+     <span class="chip ${sc>1?'chip-amber':'chip-green'}" style="margin-left:6px">${sc} SMS credit${sc>1?'s':''}</span>
+     <span class="chip chip-gray" style="margin-left:6px">Mobile: ${row[0]||'N/A'}</span>`;
+}
+function copyURL() {
+  const u = document.getElementById('preview-url').textContent;
+  if(u==='—') return;
+  navigator.clipboard.writeText(u).then(()=>alert('Copied!')).catch(()=>alert('Copy failed.'));
+}
+async function testSingleSend() {
+  const ri = (parseInt(document.getElementById('preview-row').value)||1) - 1;
+  const row = tableData[ri]; if (!row) { alert('No row.'); return; }
+  await dispatchSMS(buildURL(row[0], buildMessage(row)), ri, row[0], buildMessage(row));
+  alert(`Test send fired for row ${ri+1}. Check Logs.`);
+}
+
+// ============================================================
+//  SEND ENGINE
+// ============================================================
+function checkLongWarning() {
+  if (!tableData.length || !tableHeaders.length) return;
+  const hasLong = tableData.some(r =>
+    tableHeaders.slice(1).map((_,i) => i+1).some(ci => r[ci] && r[ci].startsWith('http') && r[ci].length > 60));
+  document.getElementById('shorten-warning').style.display = hasLong ? 'flex' : 'none';
+}
+function updateSendStats() {
+  document.getElementById('stat-total').textContent = tableData.length;
+  document.getElementById('stat-remaining').textContent = tableData.length - statSent - statFailed;
+}
+async function startSend() {
+  if (!tableData.length) { alert('No data loaded.'); return; }
+  sendingActive = true; sendingPaused = false;
+  statSent = 0; statFailed = 0;
+  document.getElementById('send-log').innerHTML = '';
+  document.getElementById('btn-send').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'inline-flex';
+  document.getElementById('btn-pause').style.display = 'inline-flex';
+  const delay = parseInt(document.getElementById('delay-ms').value) || 500;
+  let s = Math.max(0, (parseInt(document.getElementById('start-row').value)||1) - 1);
+  let e = parseInt(document.getElementById('end-row').value) || 0;
+  if (!e || e > tableData.length) e = tableData.length;
+  const total = e - s;
+  for (let i = s; i < e; i++) {
+    if (!sendingActive) break;
+    while (sendingPaused) await sleep(200);
+    if (!sendingActive) break;
+    const row = tableData[i], msg = buildMessage(row);
+    await dispatchSMS(buildURL(row[0], msg), i, row[0], msg);
+    const pct = Math.round((i-s+1)/total*100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `${i-s+1} / ${total}  (${pct}%)  —  Sent: ${statSent}  Failed: ${statFailed}`;
+    document.getElementById('stat-sent').textContent = statSent;
+    document.getElementById('stat-failed').textContent = statFailed;
+    document.getElementById('stat-remaining').textContent = total-(i-s+1);
+    if (i < e-1) await sleep(delay);
+  }
+  sendingActive = false;
+  document.getElementById('btn-send').style.display = 'inline-flex';
+  document.getElementById('btn-stop').style.display = 'none';
+  document.getElementById('btn-pause').style.display = 'none';
+  document.getElementById('progress-text').textContent = `Complete — Sent: ${statSent}  Failed: ${statFailed}`;
+  updateNavBadge('nb-logs', sendLog.length, 'var(--green)', false);
+}
+function stopSend() { sendingActive = false; sendingPaused = false; }
+function pauseSend() {
+  sendingPaused = !sendingPaused;
+  document.getElementById('btn-pause').innerHTML = sendingPaused
+    ? '<i class="fa-solid fa-play"></i> Resume'
+    : '<i class="fa-solid fa-pause"></i> Pause';
+}
+async function dispatchSMS(url, rowIdx, mobile, msg) {
+  let status, info;
+  try {
+    await fetch(url, { method:'GET', mode:'no-cors' });
+    status = 'sent'; info = 'Dispatched'; statSent++;
+  } catch(err) { status = 'error'; info = err.message; statFailed++; }
+  const entry = { time:new Date().toISOString(), row:rowIdx+1, mobile, status, info, msgPreview:msg.slice(0,80)+(msg.length>80?'...':'') };
+  sendLog.push(entry);
+  const el = document.getElementById('send-log');
+  const d = document.createElement('div');
+  d.className = status === 'sent' ? 'log-ok' : 'log-err';
+  d.textContent = `[${entry.time.slice(11,19)}] Row ${rowIdx+1} | ${mobile} → ${status.toUpperCase()}: ${info}`;
+  el.appendChild(d); el.scrollTop = el.scrollHeight;
+}
+
+// ============================================================
+//  LOGS
+// ============================================================
+function refreshLogPage() {
+  const empty = !sendLog.length;
+  document.getElementById('log-empty').style.display = empty ? 'block' : 'none';
+  document.getElementById('log-loaded').style.display = empty ? 'none' : 'block';
+  if (empty) return;
+  document.getElementById('log-tbody').innerHTML = sendLog.map((e,i) => `
+    <tr>
+      <td style="color:var(--text3)">${i+1}</td>
+      <td style="white-space:nowrap;font-size:12px">${e.time.slice(11,19)}</td>
+      <td style="font-family:monospace">${e.mobile||'—'}</td>
+      <td><span class="chip ${e.status==='sent'?'chip-green':'chip-red'}">${e.status}</span></td>
+      <td style="font-size:12px;color:var(--text2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.info)}</td>
+      <td style="font-size:12px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.msgPreview)}</td>
+    </tr>`).join('');
+}
+function exportLog() {
+  if (!sendLog.length) { alert('No log.'); return; }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(sendLog.map(e=>({ Row:e.row, Time:e.time, Mobile:e.mobile, Status:e.status, Info:e.info, 'Message Preview':e.msgPreview })));
+  ws['!cols'] = [6,26,16,10,50,80].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, 'Send Log');
+  XLSX.writeFile(wb, `send_log_${Date.now()}.xlsx`);
+}
+function clearLog() {
+  if (!confirm('Clear all logs?')) return;
+  sendLog=[]; statSent=0; statFailed=0;
+  refreshLogPage(); updateNavBadge('nb-logs',0,null,true);
+}
+
+// ============================================================
+//  UTILS
+// ============================================================
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function updateNavBadge(id, count, color, hide) {
+  const el = document.getElementById(id); if (!el) return;
+  el.textContent = count;
+  el.style.display = (hide||count===0) ? 'none' : 'inline-block';
+  if (color) el.style.background = color;
+}
+
+analyzeTemplate();
+renderDecoderScript();
+</script>
+</body>
+</html>
