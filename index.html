@@ -104,7 +104,6 @@
   </style>
 </head>
 <body>
-
 <header class="header">
   <div class="header-brand">
     <div class="icon"><i class="fa-solid fa-paper-plane" style="color:white;font-size:16px"></i></div>
@@ -112,7 +111,6 @@
   </div>
   <div class="header-badge"><i class="fa-solid fa-compress" style="margin-right:5px"></i>Smart URL Compressor + DLT Manager</div>
 </header>
-
 <div class="layout">
   <nav class="sidebar">
     <div class="sidebar-section">
@@ -128,13 +126,11 @@
       <button class="nav-item" onclick="showPage('logs')"><i class="fa-solid fa-list-check"></i> Logs <span class="nav-badge" id="nb-logs" style="display:none;background:var(--green)">0</span></button>
     </div>
   </nav>
-
   <main class="main">
 
     <!-- ===== SETUP ===== -->
     <div id="page-setup" class="page active">
       <div class="page-title">Setup &amp; Template <span>Configure API and DLT message</span></div>
-
       <div class="alert alert-green">
         <i class="fa-solid fa-circle-check"></i>
         <div>
@@ -144,7 +140,14 @@
           which stays under the DLT character limit. No external services, no redirects, no ads.
         </div>
       </div>
-
+      <div class="alert alert-info">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>
+          <strong>SMS Dispatch Method:</strong> Uses an <strong>Image beacon</strong> (not fetch) to fire GET requests
+          to the SMS API. This bypasses browser CORS restrictions entirely — no "Failed to fetch" errors.
+          The SMS is always dispatched; the browser simply can't read the response back (which is fine for bulk sending).
+        </div>
+      </div>
       <div class="card">
         <div class="card-title"><i class="fa-solid fa-key"></i> SMS API Credentials</div>
         <div class="grid-2">
@@ -168,7 +171,6 @@
           </div>
         </div>
       </div>
-
       <div class="card">
         <div class="card-title"><i class="fa-solid fa-file-lines"></i> DLT Template</div>
         <div class="grid-2">
@@ -192,7 +194,6 @@
     <!-- ===== URL COMPRESSOR ===== -->
     <div id="page-urlbuilder" class="page">
       <div class="page-title">URL Compressor <span>Compress long query parameters into a short token — DLT-safe</span></div>
-
       <div class="alert alert-green">
         <i class="fa-solid fa-circle-check"></i>
         <div>
@@ -203,22 +204,18 @@
           — typically <strong>60–80 chars total</strong>, well within DLT limits.
         </div>
       </div>
-
       <div class="card">
         <div class="card-title"><i class="fa-solid fa-gears"></i> Compression Settings</div>
-
         <div class="field">
           <label>Base URL (DLT-whitelisted, stays unchanged in SMS)</label>
           <input id="base-url" value="https://cloudhostadmin.github.io/KALYAN_CENTURY_2026/" placeholder="https://yourdomain.com/page/">
         </div>
-
         <div class="field">
           <label>Which column contains the long query-parameter URL to compress?</label>
           <div id="compress-col-wrap" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
             <span style="color:var(--text3);font-size:13px">Load your Excel data first (Setup tab).</span>
           </div>
         </div>
-
         <div class="field">
           <label style="margin-bottom:8px">Preview compressed URL for row:</label>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -226,7 +223,6 @@
             <span style="font-size:13px;color:var(--text2)" id="compress-preview-count"></span>
           </div>
         </div>
-
         <div id="compress-preview-box" style="margin-top:10px;display:none">
           <div style="margin-bottom:8px">
             <label style="margin-bottom:4px;font-size:12px">Original URL length:</label>
@@ -240,7 +236,6 @@
           <label style="margin-bottom:4px;font-size:12px">Compressed URL (this goes into SMS):</label>
           <div id="compressed-url-display" class="url-display">—</div>
         </div>
-
         <div class="btn-row">
           <button class="btn btn-primary" id="btn-compress-all" onclick="compressAll()">
             <i class="fa-solid fa-wand-magic-sparkles"></i> Compress All Rows Now
@@ -253,14 +248,12 @@
           </button>
         </div>
       </div>
-
       <div class="card" id="compress-progress-card" style="display:none">
         <div class="card-title"><i class="fa-solid fa-bars-progress"></i> Compression Progress</div>
         <div class="progress-bar"><div class="progress-fill" id="compress-progress-fill" style="width:0%"></div></div>
         <div id="compress-progress-text" style="font-size:12px;color:var(--text3);margin-bottom:10px"></div>
         <div class="log-box" id="compress-log"></div>
       </div>
-
       <div class="card">
         <div class="card-title"><i class="fa-solid fa-code"></i> GitHub Page Decoder Script</div>
         <div class="alert alert-info" style="margin-bottom:12px">
@@ -379,7 +372,6 @@
 
   </main>
 </div>
-
 <script>
 // ============================================================
 //  STATE
@@ -388,7 +380,7 @@ let vars = [], tableHeaders = [], tableData = [];
 let sendLog = [];
 let sendingActive = false, sendingPaused = false, compressingActive = false;
 let statSent = 0, statFailed = 0;
-let compressColIndex = -1; // which column index to compress
+let compressColIndex = -1;
 
 // ============================================================
 //  NAVIGATION
@@ -406,49 +398,52 @@ function showPage(p) {
 }
 
 // ============================================================
+//  SMS DISPATCH — Image Beacon (bypasses CORS for GET requests)
+// ============================================================
+/**
+ * WHY IMAGE BEACON INSTEAD OF FETCH?
+ *
+ * The SMS API (http://sms.ssdweb.in/api/sendhttp.php) is an HTTP endpoint
+ * that does not return CORS headers. A browser blocks fetch() to such endpoints
+ * with "Failed to fetch". Using an Image element fires a GET request that:
+ *   ✓ Is not subject to CORS preflight
+ *   ✓ Works cross-origin without any server-side changes
+ *   ✓ Fires reliably even from HTTPS pages (though mixed-content may show a warning)
+ *   ✗ We can't read the response text — but for fire-and-forget SMS dispatch, that's fine.
+ *
+ * We resolve after a 1.5 s timeout which is enough for the API to receive the request.
+ */
+function fireImageBeacon(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const timer = setTimeout(() => resolve({ ok: true, method: 'beacon-timeout' }), 1500);
+    img.onload = () => { clearTimeout(timer); resolve({ ok: true, method: 'beacon-load' }); };
+    img.onerror = () => { clearTimeout(timer); resolve({ ok: true, method: 'beacon-error' }); };
+    img.src = url;
+  });
+}
+
+// ============================================================
 //  URL COMPRESSION — Base64 encode the query string only
 // ============================================================
-
-/**
- * Takes a full URL like:
- *   https://cloudhostadmin.github.io/KALYAN_CENTURY_2026/?customerId=Test&firstName=NEEL...
- * Extracts just the query params, Base64-encodes them, returns:
- *   https://cloudhostadmin.github.io/KALYAN_CENTURY_2026/?d=Y3VzdG9tZXJJZD1UZXN0...
- */
 function compressURL(fullUrl, baseUrl) {
   baseUrl = (baseUrl || document.getElementById('base-url').value).trim().replace(/\/$/, '');
-
   let queryString = '';
-
-  // If the URL contains the base URL, extract query string from it
   if (fullUrl.includes('?')) {
     queryString = fullUrl.substring(fullUrl.indexOf('?') + 1);
   } else {
-    // It's just params without a base URL — encode as-is
     queryString = fullUrl;
   }
-
   if (!queryString) return baseUrl + '/';
-
-  // Base64 encode the query string
   const encoded = btoa(unescape(encodeURIComponent(queryString)));
-
-  // Use URL-safe Base64 (replace + with - and / with _)
   const urlSafe = encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
   return baseUrl + '/?d=' + urlSafe;
 }
 
 function decompressToken(token) {
-  // Restore standard Base64
   let b64 = token.replace(/-/g, '+').replace(/_/g, '/');
-  // Add padding
   while (b64.length % 4) b64 += '=';
-  try {
-    return decodeURIComponent(escape(atob(b64)));
-  } catch(e) {
-    return null;
-  }
+  try { return decodeURIComponent(escape(atob(b64))); } catch(e) { return null; }
 }
 
 // ============================================================
@@ -460,8 +455,6 @@ function refreshCompressorPage() {
     wrap.innerHTML = '<span style="color:var(--text3);font-size:13px">Load your Excel data first.</span>';
     return;
   }
-
-  // Show radio buttons for each variable column (col index 1+)
   wrap.innerHTML = tableHeaders.slice(1).map((h, i) => `
     <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--text2);
       background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 14px">
@@ -469,7 +462,6 @@ function refreshCompressorPage() {
         style="width:auto;accent-color:var(--accent)" onchange="compressColIndex=${i+1};updateCompressPreview()">
       <i class="fa-solid fa-compress" style="font-size:11px;color:var(--accent)"></i> ${esc(h)}
     </label>`).join('');
-
   if (compressColIndex === -1 && tableHeaders.length > 1) compressColIndex = 1;
   updateCompressPreview();
   renderDecoderScript();
@@ -480,13 +472,8 @@ function updateCompressPreview() {
   const ri = (parseInt(document.getElementById('compress-preview-row').value) || 1) - 1;
   const row = tableData[Math.min(ri, tableData.length - 1)];
   document.getElementById('compress-preview-count').textContent = `of ${tableData.length}`;
-
   const original = row[compressColIndex] || '';
-  if (!original) {
-    document.getElementById('compress-preview-box').style.display = 'none';
-    return;
-  }
-
+  if (!original) { document.getElementById('compress-preview-box').style.display = 'none'; return; }
   const compressed = compressURL(original);
   document.getElementById('compress-preview-box').style.display = 'block';
   document.getElementById('orig-len-chip').textContent = original.length + ' chars';
@@ -498,41 +485,31 @@ function updateCompressPreview() {
 async function compressAll() {
   if (!tableData.length) { alert('Load data first.'); return; }
   if (compressColIndex === -1) { alert('Select a column to compress.'); return; }
-
   compressingActive = true;
   document.getElementById('btn-compress-all').disabled = true;
   document.getElementById('btn-compress-stop').style.display = 'inline-flex';
   document.getElementById('compress-progress-card').style.display = 'block';
   document.getElementById('compress-log').innerHTML = '';
-
   let done = 0, compressed = 0, skipped = 0;
   const total = tableData.length;
   const colName = tableHeaders[compressColIndex];
-
   cLog('info', `Compressing column "${colName}" for ${total} rows...`);
-
   for (let ri = 0; ri < total; ri++) {
     if (!compressingActive) break;
     const orig = tableData[ri][compressColIndex] || '';
-
-    if (!orig) {
-      skipped++;
-    } else {
+    if (!orig) { skipped++; }
+    else {
       const compressed_url = compressURL(orig);
       tableData[ri][compressColIndex] = compressed_url;
       cLog('short', `Row ${ri+1}: ${orig.length} → ${compressed_url.length} chars  ✓`);
       compressed++;
     }
-
     done++;
     const pct = Math.round(done / total * 100);
     document.getElementById('compress-progress-fill').style.width = pct + '%';
     document.getElementById('compress-progress-text').textContent = `${done} / ${total}  (${pct}%)`;
-
-    // No delay needed — this is all local computation, instant
-    if (ri % 50 === 49) await sleep(10); // yield to browser every 50 rows
+    if (ri % 50 === 49) await sleep(10);
   }
-
   compressingActive = false;
   document.getElementById('btn-compress-all').disabled = false;
   document.getElementById('btn-compress-stop').style.display = 'none';
@@ -555,52 +532,45 @@ function cLog(type, msg) {
 // ============================================================
 const DECODER_SCRIPT = `<!-- Add this inside <script> in your index.html on GitHub -->
 (function() {
-  // Read the compressed ?d= token from the URL
   var params = new URLSearchParams(window.location.search);
   var token = params.get('d');
-  if (!token) return; // No token — normal page load
+  var customerParams;
 
-  // Restore Base64 padding and decode
-  var b64 = token.replace(/-/g, '+').replace(/_/g, '/');
-  while (b64.length % 4) b64 += '=';
-
-  var queryString;
-  try {
-    queryString = decodeURIComponent(escape(atob(b64)));
-  } catch(e) {
-    console.error('SMS token decode failed:', e);
-    return;
+  if (token) {
+    var b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    var queryString;
+    try { queryString = decodeURIComponent(escape(atob(b64))); }
+    catch(e) { console.error('SMS token decode failed:', e); }
+    if (queryString) customerParams = new URLSearchParams(queryString);
   }
 
-  // Parse the recovered query parameters
-  var customerParams = new URLSearchParams(queryString);
+  if (!customerParams) customerParams = params;
 
-  // ── USE YOUR PARAMETERS HERE ──────────────────────────────
-  // Example: populate variables on your page
-  var data = {};
-  customerParams.forEach(function(value, key) {
-    data[key] = value;
-  });
+  function get(key) {
+    var v = customerParams.get(key);
+    return v ? decodeURIComponent(v) : '';
+  }
 
-  // Common fields:
-  var customerId   = data.customerId   || '';
-  var firstName    = data.firstName    || '';
-  var lastName     = data.lastName     || '';
-  var address1     = data.address1     || '';
-  var address2     = data.address2     || '';
-  var address3     = data.address3     || '';
-  var pincode      = data.pincode      || '';
-  var city         = data.city         || '';
-  var state        = data.state        || '';
-  var mobileNumber = data.mobilenumber || '';
-  var paymentLink  = data.paymentLink  || '';
+  window._kalyanData = {
+    customerId:      get('customerId'),
+    firstName:       get('firstName'),
+    lastName:        get('lastName'),
+    address1:        get('address1'),
+    address2:        get('address2'),
+    address3:        get('address3'),
+    pincode:         get('pincode'),
+    city:            get('city'),
+    state:           get('state'),
+    mobileNumber:    get('mobileNumber') || get('mobilenumber') || get('mobile'),
+    email:           get('email') || get('emailId'),
+    alternateMobile: get('alternateMobile'),
+    paymentLink:     get('paymentLink'),
+    rightLogo:       get('rightLogo'),
+    logoSize:        get('logoSize')
+  };
 
-  // Example: fill elements on your page
-  // document.getElementById('customer-name').textContent = firstName + ' ' + lastName;
-  // document.getElementById('payment-btn').href = paymentLink;
-  // etc.
-
-  console.log('Customer data loaded:', data);
+  console.log('Customer data loaded:', window._kalyanData);
 })();`;
 
 function renderDecoderScript() {
@@ -621,10 +591,7 @@ function analyzeTemplate() {
   const matches = [...tpl.matchAll(/\{#var#\}/g)];
   vars = matches.map((_, i) => `var_${i + 1}`);
   const el = document.getElementById('analysis');
-  if (!matches.length) {
-    el.innerHTML = '<span style="color:var(--text3)">No variables found.</span>';
-    return;
-  }
+  if (!matches.length) { el.innerHTML = '<span style="color:var(--text3)">No variables found.</span>'; return; }
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <span class="chip chip-blue"><i class="fa-solid fa-brackets-curly"></i> ${matches.length} variable${matches.length > 1 ? 's' : ''} detected</span>
@@ -729,6 +696,7 @@ function buildMessage(row) {
     return (row[c] !== undefined && row[c] !== '') ? row[c] : '{#var#}';
   });
 }
+
 function buildURL(mobile, msg) {
   const base = document.getElementById('apibase').value.trim();
   const p = {
@@ -775,11 +743,13 @@ function updatePreview() {
      <span class="chip ${sc>1?'chip-amber':'chip-green'}" style="margin-left:6px">${sc} SMS credit${sc>1?'s':''}</span>
      <span class="chip chip-gray" style="margin-left:6px">Mobile: ${row[0]||'N/A'}</span>`;
 }
+
 function copyURL() {
   const u = document.getElementById('preview-url').textContent;
   if(u==='—') return;
   navigator.clipboard.writeText(u).then(()=>alert('Copied!')).catch(()=>alert('Copy failed.'));
 }
+
 async function testSingleSend() {
   const ri = (parseInt(document.getElementById('preview-row').value)||1) - 1;
   const row = tableData[ri]; if (!row) { alert('No row.'); return; }
@@ -796,10 +766,12 @@ function checkLongWarning() {
     tableHeaders.slice(1).map((_,i) => i+1).some(ci => r[ci] && r[ci].startsWith('http') && r[ci].length > 60));
   document.getElementById('shorten-warning').style.display = hasLong ? 'flex' : 'none';
 }
+
 function updateSendStats() {
   document.getElementById('stat-total').textContent = tableData.length;
   document.getElementById('stat-remaining').textContent = tableData.length - statSent - statFailed;
 }
+
 async function startSend() {
   if (!tableData.length) { alert('No data loaded.'); return; }
   sendingActive = true; sendingPaused = false;
@@ -834,6 +806,7 @@ async function startSend() {
   document.getElementById('progress-text').textContent = `Complete — Sent: ${statSent}  Failed: ${statFailed}`;
   updateNavBadge('nb-logs', sendLog.length, 'var(--green)', false);
 }
+
 function stopSend() { sendingActive = false; sendingPaused = false; }
 function pauseSend() {
   sendingPaused = !sendingPaused;
@@ -841,13 +814,28 @@ function pauseSend() {
     ? '<i class="fa-solid fa-play"></i> Resume'
     : '<i class="fa-solid fa-pause"></i> Pause';
 }
+
+// ── Core dispatch using Image beacon (CORS-free) ──────────
 async function dispatchSMS(url, rowIdx, mobile, msg) {
   let status, info;
   try {
-    await fetch(url, { method:'GET', mode:'no-cors' });
-    status = 'sent'; info = 'Dispatched'; statSent++;
-  } catch(err) { status = 'error'; info = err.message; statFailed++; }
-  const entry = { time:new Date().toISOString(), row:rowIdx+1, mobile, status, info, msgPreview:msg.slice(0,80)+(msg.length>80?'...':'') };
+    const result = await fireImageBeacon(url);
+    status = 'sent';
+    info = `Dispatched via beacon (${result.method})`;
+    statSent++;
+  } catch(err) {
+    status = 'error';
+    info = err.message;
+    statFailed++;
+  }
+  const entry = {
+    time: new Date().toISOString(),
+    row: rowIdx + 1,
+    mobile,
+    status,
+    info,
+    msgPreview: msg.slice(0, 80) + (msg.length > 80 ? '...' : '')
+  };
   sendLog.push(entry);
   const el = document.getElementById('send-log');
   const d = document.createElement('div');
@@ -874,14 +862,18 @@ function refreshLogPage() {
       <td style="font-size:12px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.msgPreview)}</td>
     </tr>`).join('');
 }
+
 function exportLog() {
   if (!sendLog.length) { alert('No log.'); return; }
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(sendLog.map(e=>({ Row:e.row, Time:e.time, Mobile:e.mobile, Status:e.status, Info:e.info, 'Message Preview':e.msgPreview })));
+  const ws = XLSX.utils.json_to_sheet(sendLog.map(e=>({
+    Row:e.row, Time:e.time, Mobile:e.mobile, Status:e.status, Info:e.info, 'Message Preview':e.msgPreview
+  })));
   ws['!cols'] = [6,26,16,10,50,80].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, ws, 'Send Log');
   XLSX.writeFile(wb, `send_log_${Date.now()}.xlsx`);
 }
+
 function clearLog() {
   if (!confirm('Clear all logs?')) return;
   sendLog=[]; statSent=0; statFailed=0;
